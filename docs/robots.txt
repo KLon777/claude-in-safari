@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://klon777.github.io/claude-in-safari/sitemap.xml
