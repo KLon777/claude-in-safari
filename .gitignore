@@ -1,0 +1,9 @@
+build/
+.team
+*.log
+node_modules/
+.DS_Store
+*.xcuserstate
+xcuserdata/
+build-release/
+dist/

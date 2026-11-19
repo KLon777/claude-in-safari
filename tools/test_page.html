@@ -1,0 +1,37 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>feature test</title>
+<select id="s" aria-label="Choice"><option value="a">Alpha</option><option value="b">Beta</option></select>
+<label><input type="checkbox" id="c" aria-label="Check me"> check</label>
+<input id="t" aria-label="Text box">
+<button id="b">Target</button>
+<canvas id="cv" width="420" height="100" style="display:block;margin:12px 0"></canvas>
+<div id="host"></div>
+<iframe id="fr" height="40" srcdoc="<button id=ib>Frame Btn</button><script>ib.onclick=()=>parent.document.getElementById('out').textContent+='frame-click;'</script>"></iframe>
+<iframe height="20" src="http://127.0.0.1:18767/blank.html"></iframe>
+<div id="out"></div>
+<div style="height:1800px;background:linear-gradient(#fff,#ccc)">tall</div>
+<p id="bottom">bottom-marker</p>
+<script>
+window.pageSecret = 41;
+console.warn("warn-test", 1);
+fetch("/test_page.html");
+setTimeout(() => { throw new Error("boom-test"); }, 100);
+const g = cv.getContext("2d");
+g.fillStyle = "#fff"; g.fillRect(0, 0, 420, 100);
+g.fillStyle = "#000"; g.font = "bold 48px sans-serif"; g.fillText("CANVAS 4711", 20, 66);
+cv.onclick = (e) => { log("canvas@" + Math.round(e.offsetX) + "," + Math.round(e.offsetY)); log("trusted=" + e.isTrusted); };
+document.addEventListener("mousedown", (e) => log("md client=" + e.clientX + "," + e.clientY + " screen=" + e.screenX + "," + e.screenY + " trusted=" + e.isTrusted), true);
+const sr = host.attachShadow({ mode: "open" });
+sr.innerHTML = "<button id=sb>Shadow Btn</button>";
+sr.getElementById("sb").onclick = () => log("shadow-click");
+const out = document.getElementById("out"), log = (m) => (out.textContent += m + ";");
+s.onchange = () => log("select=" + s.value);
+c.onchange = () => log("check=" + c.checked);
+t.oninput = () => log("text=" + t.value);
+t.onkeydown = (e) => { if (e.ctrlKey && e.key === "k") log("ctrl+k"); };
+b.ondblclick = () => log("dbl");
+b.oncontextmenu = (e) => { e.preventDefault(); log("ctx"); };
+b.onmouseover = () => log("hover");
+setTimeout(() => { const p = document.createElement("p"); p.textContent = "ready-late"; document.body.append(p); }, 800);
+</script>

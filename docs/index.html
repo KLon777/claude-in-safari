@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude in Safari — let Claude drive your real Safari (MCP, unofficial)</title>
+<meta name="description" content="Unofficial Safari Web Extension + local MCP server: Claude or any MCP client reads pages, clicks, types, takes screenshots, OCR and runs JavaScript in your real Safari. Неофициальное расширение Safari для MCP.">
+<meta property="og:title" content="Claude in Safari">
+<meta property="og:description" content="Safari Web Extension + local MCP server that lets Claude drive your real Safari.">
+<meta property="og:image" content="screenshot-viewport.jpg">
+<link rel="icon" href="icon.png">
+<style>
+:root{color-scheme:dark light;--bg:#0d1117;--fg:#e6edf3;--mut:#8b949e;--card:#161b22;--line:#30363d;--acc:#2ea98f}
+@media (prefers-color-scheme:light){:root{--bg:#fff;--fg:#1f2328;--mut:#59636e;--card:#f6f8fa;--line:#d1d9e0;--acc:#0f7d68}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+main{max-width:860px;margin:0 auto;padding:48px 20px 80px}
+header{text-align:center}header img{width:110px;border-radius:24px}
+h1{font-size:2.2rem;margin:.4em 0 .1em}h2{margin-top:2em;border-bottom:1px solid var(--line);padding-bottom:.3em}
+p.lead{color:var(--mut);font-size:1.1rem;max-width:640px;margin:0 auto}
+.btns{margin:24px 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btns a{padding:10px 18px;border-radius:8px;border:1px solid var(--line);color:var(--fg);text-decoration:none;font-weight:600}
+.btns a.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.lang{text-align:center;margin-top:8px}.lang button{background:none;border:1px solid var(--line);color:var(--fg);padding:4px 12px;border-radius:6px;cursor:pointer}.lang button[aria-pressed=true]{background:var(--card)}
+.note{background:var(--card);border:1px solid var(--line);border-left:4px solid #d29922;border-radius:6px;padding:12px 16px;margin:20px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.grid div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;overflow:auto}
+img.shot{max-width:100%;border:1px solid var(--line);border-radius:8px}
+[data-l]{display:none}html[data-lang=en] [data-l=en],html[data-lang=ru] [data-l=ru]{display:block}html[data-lang=en] span[data-l=en],html[data-lang=ru] span[data-l=ru]{display:inline}
+footer{margin-top:3em;color:var(--mut);font-size:.9rem;text-align:center}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <img src="icon.png" alt="Claude in Safari icon">
+  <h1>Claude in Safari</h1>
+  <p class="lead" data-l="en">A Safari Web Extension plus a local MCP server that lets Claude — or any MCP client — work in your real Safari, the way "Claude in Chrome" works in Chrome.</p>
+  <p class="lead" data-l="ru">Расширение Safari и локальный MCP-сервер: Claude (или любой MCP-клиент) работает в вашем настоящем Safari — так же, как «Claude in Chrome» в Chrome.</p>
+  <div class="btns">
+    <a class="primary" href="https://github.com/KLon777/claude-in-safari/releases/latest">Download DMG</a>
+    <a href="https://github.com/KLon777/claude-in-safari">GitHub</a>
+  </div>
+  <div class="lang"><button id="b-en" aria-pressed="true">English</button> <button id="b-ru" aria-pressed="false">Русский</button></div>
+</header>
+
+<div class="note"><span data-l="en"><b>Unofficial project.</b> Not affiliated with or endorsed by Anthropic. The extension gives an MCP client control of your <i>real</i> Safari sessions — enable it only if you understand that.</span><span data-l="ru"><b>Неофициальный проект.</b> Не связан с Anthropic. Расширение даёт MCP-клиенту управление вашими <i>настоящими</i> сессиями Safari — включайте, только если понимаете это.</span></div>
+
+<img class="shot" src="screenshot-viewport.jpg" alt="Claude reading a page in Safari">
+
+<h2 data-l="en">What it can do</h2><h2 data-l="ru">Что умеет</h2>
+<div class="grid">
+  <div><b>Tabs · Вкладки</b><br>list, open, close, navigate, history, frames</div>
+  <div><b>Read · Чтение</b><br>interactive elements with refs, page text, shadow DOM, iframes (cross-origin too)</div>
+  <div><b>Act · Действия</b><br>click, double/right click, hover, type, keys, forms, scroll, wait</div>
+  <div><b>See · Зрение</b><br>screenshots, full-page screenshot, on-device OCR (Apple Vision, ru+en)</div>
+  <div><b>Debug · Отладка</b><br>console, fetch/XHR log, JavaScript in the extension or page world</div>
+  <div><b>Private · Приватно</b><br>everything on 127.0.0.1; Origin + token protect the port</div>
+</div>
+<p><img class="shot" src="screenshot-fullpage.jpg" alt="Full-page screenshot" style="max-width:320px"></p>
+
+<h2 data-l="en">Install</h2><h2 data-l="ru">Установка</h2>
+<div data-l="en"><ol>
+<li>Download <code>Claude-in-Safari.dmg</code> from <a href="https://github.com/KLon777/claude-in-safari/releases/latest">Releases</a>, drag the app to Applications and open it once.</li>
+<li>Safari → Settings → Extensions: enable <b>Claude in Safari</b>, allow all websites. The app has no paid certificate: sign it with your own free Apple Development certificate (a guided script is in the disk image) or use Develop → Allow Unsigned Extensions (repeat after each Safari restart).</li>
+<li>Copy the <code>server</code> folder somewhere permanent and add it to <code>claude_desktop_config.json</code>, then restart Claude Desktop.</li></ol></div>
+<div data-l="ru"><ol>
+<li>Скачайте <code>Claude-in-Safari.dmg</code> из <a href="https://github.com/KLon777/claude-in-safari/releases/latest">Releases</a>, перетащите приложение в «Программы» и откройте один раз.</li>
+<li>Safari → Настройки → Расширения: включите <b>Claude in Safari</b>, разрешите все сайты. Платного сертификата у приложения нет: подпишите его своим бесплатным сертификатом Apple Development (в образе есть скрипт с подсказками) или используйте «Разработка → Разрешить неподписанные расширения» (после каждого перезапуска Safari).</li>
+<li>Скопируйте папку <code>server</code> в постоянное место и добавьте в <code>claude_desktop_config.json</code>, затем перезапустите Claude Desktop.</li></ol></div>
+<pre>{
+  "mcpServers": {
+    "Claude in Safari": {
+      "command": "/opt/homebrew/bin/node",
+      "args": ["/path/to/server/server.js"]
+    }
+  }
+}</pre>
+
+<footer>MIT License · © 2026 KLon777 · <a href="https://github.com/KLon777/claude-in-safari">GitHub</a> · <span data-l="en">"Claude" is a trademark of Anthropic.</span><span data-l="ru">«Claude» — торговая марка Anthropic.</span></footer>
+</main>
+<script>
+(function(){
+  var h=document.documentElement,en=document.getElementById("b-en"),ru=document.getElementById("b-ru");
+  function set(l){h.setAttribute("data-lang",l);h.lang=l;en.setAttribute("aria-pressed",l==="en");ru.setAttribute("aria-pressed",l==="ru");}
+  en.onclick=function(){set("en")};ru.onclick=function(){set("ru")};
+  set((navigator.language||"en").toLowerCase().indexOf("ru")===0?"ru":"en");
+})();
+</script>
+</body>
+</html>
