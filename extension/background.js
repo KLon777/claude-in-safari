@@ -78,19 +78,22 @@ async function toContent(tabId, msg) {
   const frameId = msg.params && msg.params.frame > 0 ? msg.params.frame : undefined;
   const opts = frameId === undefined ? undefined : { frameId };
   if (frameId !== undefined) msg = { ...msg, params: { ...msg.params, __frame: true } };
+  const send = () => api.tabs.sendMessage(tabId, msg, opts);
   let r;
-  try { r = await api.tabs.sendMessage(tabId, msg, opts); } catch { r = undefined; }
-  if (r === undefined) {
-    // Content script missing (tab opened before the extension, or the page is reloading): inject and retry.
-    await api.tabs.executeScript(tabId, frameId === undefined ? { file: "content.js" } : { file: "content.js", frameId });
-    r = await api.tabs.sendMessage(tabId, msg, opts);
+  try { r = await send(); } catch { r = undefined; }
+  let lastErr = "";
+  for (let i = 0; r === undefined && i < 8; i++) {
+    // Content script missing (tab opened before the extension, or the page is still loading/reloading): inject and retry for a few seconds.
+    try { await api.tabs.executeScript(tabId, frameId === undefined ? { file: "content.js", runAt: "document_start" } : { file: "content.js", frameId, runAt: "document_start" }); } catch (e) { lastErr = String((e && e.message) || e); }
+    try { r = await send(); } catch { r = undefined; }
+    if (r === undefined) await new Promise((res) => setTimeout(res, 700));
   }
-  if (r === undefined) throw new Error("No response from the page (it may be navigating or restricted); retry.");
+  if (r === undefined) throw new Error("No response from the page (it may be navigating or restricted); retry." + (lastErr ? " [inject: " + lastErr + "]" : ""));
   if (r && r.__error) throw new Error(r.__error);
   return r;
 }
 
-async function handle(method, p) {
+async function handleInner(method, p) {
   switch (method) {
     case "tabs": {
       const tabs = await api.tabs.query({});
@@ -150,9 +153,82 @@ async function handle(method, p) {
     case "console":
     case "eval_page":
     case "screen_point":
+    case "snapshot":
+    case "reader":
+    case "upload_file":
+    case "drag":
+    case "dialog":
     case "network": {
       const t = await resolveTab(p);
       return toContent(t.id, { method, params: p });
+    }
+    case "cookies": {
+      const t = await resolveTab(p);
+      const url = p.url || t.url;
+      if (!/^https?:/i.test(url || "")) throw new Error("cookies work on http(s) pages only");
+      const a = p.action || "get";
+      if (api.cookies) {
+        if (a === "get") {
+          const list = await api.cookies.getAll(p.name ? { url, name: p.name } : { url });
+          return list.map((c) => ({ name: c.name, value: c.value, domain: c.domain, path: c.path, secure: c.secure, httpOnly: c.httpOnly, sameSite: c.sameSite, expires: c.expirationDate ? new Date(c.expirationDate * 1000).toISOString() : "session" }));
+        }
+        if (!p.name) throw new Error("name is required");
+        if (a === "delete") { await api.cookies.remove({ url, name: p.name }); return { deleted: p.name }; }
+        if (a === "set") {
+          const d = { url, name: p.name, value: String(p.value == null ? "" : p.value) };
+          if (p.path) d.path = p.path;
+          if (p.domain) d.domain = p.domain;
+          if (typeof p.secure === "boolean") d.secure = p.secure;
+          if (typeof p.httpOnly === "boolean") d.httpOnly = p.httpOnly;
+          if (p.expires) d.expirationDate = Math.floor(Date.parse(p.expires) / 1000);
+          const c = await api.cookies.set(d);
+          return { set: c ? c.name : p.name };
+        }
+        throw new Error("action must be get, set or delete");
+      }
+      // Fallback without the cookies API: only what scripts on the page may see (no httpOnly cookies).
+      if (a === "get") {
+        const raw = (await api.tabs.executeScript(t.id, { code: "document.cookie" }))[0] || "";
+        return raw.split("; ").filter(Boolean).map((kv) => { const i = kv.indexOf("="); return { name: kv.slice(0, i), value: kv.slice(i + 1) }; }).filter((c) => !p.name || c.name === p.name);
+      }
+      if (!p.name) throw new Error("name is required");
+      const code = a === "delete"
+        ? "document.cookie=" + JSON.stringify(p.name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=" + (p.path || "/")) + ";true"
+        : "document.cookie=" + JSON.stringify(p.name + "=" + encodeURIComponent(String(p.value == null ? "" : p.value)) + "; path=" + (p.path || "/")) + ";true";
+      await api.tabs.executeScript(t.id, { code });
+      return { [a]: p.name, note: "cookies API unavailable: used document.cookie" };
+    }
+    case "storage": {
+      const t = await resolveTab(p);
+      const area = p.area === "session" ? "sessionStorage" : "localStorage";
+      const a = p.action || "list";
+      const arg = JSON.stringify({ area, a, key: p.key, value: p.value });
+      const code = "(function(){var q=" + arg + ";var s=window[q.area];" +
+        "if(q.a==='list'){var o=[];for(var i=0;i<s.length&&i<500;i++){var k=s.key(i);o.push({key:k,length:(s.getItem(k)||'').length,preview:(s.getItem(k)||'').slice(0,120)});}return o;}" +
+        "if(q.a==='get'){return s.getItem(q.key);}" +
+        "if(q.a==='set'){s.setItem(q.key,String(q.value==null?'':q.value));return 'set';}" +
+        "if(q.a==='delete'){s.removeItem(q.key);return 'deleted';}" +
+        "throw new Error('action must be list, get, set or delete');})()";
+      if (a !== "list" && !p.key) throw new Error("key is required");
+      const r = await api.tabs.executeScript(t.id, { code });
+      return { area, value: r && r[0] };
+    }
+    case "screenshot_element": {
+      const t = await resolveTab(p);
+      if (!t.active) await api.tabs.update(t.id, { active: true });
+      const rect = await toContent(t.id, { method: "element_rect", params: p });
+      await sleep(250);
+      const dataUrl = await api.tabs.captureVisibleTab(t.windowId, { format: "png" });
+      const im = new Image(); im.src = dataUrl; await im.decode();
+      const k = im.naturalWidth / rect.vw; // device pixels per CSS pixel
+      const pad = Math.max(0, p.padding || 0);
+      const x = Math.max(0, Math.floor((rect.x - pad) * k)), y = Math.max(0, Math.floor((rect.y - pad) * k));
+      const w = Math.min(im.naturalWidth - x, Math.ceil((rect.w + 2 * pad) * k)), h = Math.min(im.naturalHeight - y, Math.ceil((rect.h + 2 * pad) * k));
+      if (w < 2 || h < 2) throw new Error("The element is not visible (zero size or outside the viewport)");
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(im, x, y, w, h, 0, 0, w, h);
+      return { dataUrl: cv.toDataURL("image/png"), width: w, height: h, note: rect.h > rect.vh || rect.w > rect.vw ? "element is larger than the viewport: only the visible part is captured" : undefined };
     }
     case "frames": {
       const t = await resolveTab(p);
@@ -205,5 +281,23 @@ async function handle(method, p) {
     }
     default:
       throw new Error("Unknown method: " + method);
+  }
+}
+
+
+// Indicator: mark the tab Claude is working on (content.js draws a frame + label), but hide it while pixels are captured.
+const NO_MARK = new Set(["tabs", "tab_info", "frames", "new_tab", "close_tab", "activate", "agent_mark"]);
+const CAPTURES = new Set(["screenshot", "fullshot", "ocr", "screenshot_element"]);
+async function handle(method, p) {
+  if (NO_MARK.has(method)) return handleInner(method, p);
+  let t = null;
+  try { t = await resolveTab(p); } catch {}
+  const mark = (on) => (t ? api.tabs.sendMessage(t.id, { method: "agent_mark", params: { on } }).catch(() => {}) : Promise.resolve());
+  const capture = CAPTURES.has(method);
+  if (capture) { await mark(false); await sleep(60); } else mark(true);
+  try {
+    return await handleInner(method, p);
+  } finally {
+    if (capture) mark(true);
   }
 }

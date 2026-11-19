@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Claude in Safari",
   "description": "Lets Claude drive Safari tabs through a local MCP server.",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "background": {
     "scripts": [
       "background.js"
@@ -13,7 +13,8 @@
     "tabs",
     "activeTab",
     "<all_urls>",
-    "nativeMessaging"
+    "nativeMessaging",
+    "cookies"
   ],
   "content_scripts": [
     {

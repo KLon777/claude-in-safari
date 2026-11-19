@@ -6,7 +6,7 @@ import Network
 import CryptoKit
 import Security
 
-let SERVER_VERSION = "1.0.3"
+let SERVER_VERSION = "1.1.0"
 let port = UInt16(ProcessInfo.processInfo.environment["SAFARI_CLAUDE_PORT"] ?? "") ?? 18765
 let NOT_CONNECTED = "Safari extension is not connected. Open Safari and enable 'Claude for Safari' (Safari > Settings > Extensions)."
 let Q = DispatchQueue(label: "claude-safari-server")
@@ -39,7 +39,7 @@ if CommandLine.arguments.contains("--policy") {
     ensurePolicyFile()
     let (pol, err) = loadPolicy()
     print("policy file: " + policyURL.path)
-    if let e = err { print("PROBLEM: " + e) } else { print("blocked: \(pol.blocked)\nconfirm: \(pol.confirm)\nconfirmAll: \(pol.confirmAll)") }
+    if let e = err { print("PROBLEM: " + e) } else { print("blocked: \(pol.blocked)\nconfirm: \(pol.confirm)\nconfirmAll: \(pol.confirmAll)\nallowSensitive: \(pol.allowSensitive)") }
     exit(err == nil ? 0 : 1)
 }
 
@@ -283,16 +283,21 @@ func handle(_ line: String) {
         guard let m = methodFor[name] else { return reply(id, result: textResult("Unknown tool: " + name, error: true)) }
         policyCheck(name, params["arguments"] as? [String: Any] ?? [:]) { verdict in
             if case .deny(let why) = verdict { return reply(id, result: textResult(why, error: true)) }
-            call(m, params["arguments"] ?? [String: Any](), timeout: m == "fullshot" ? 120 : 45) { res in
+            let args = params["arguments"] as? [String: Any] ?? [:]
+            if m == "save_pdf" { return savePDF(args) { reply(id, result: $0) } }
+            prepareArgs(m, args) { prepared in
+              guard case .success(let a) = prepared else { if case .failure(let e) = prepared { reply(id, result: textResult(e.message, error: true)) }; return }
+              call(m, a, timeout: m == "fullshot" ? 120 : 45) { res in
                 switch res {
                 case .failure(let e): reply(id, result: textResult((e as? MsgError)?.message ?? "\(e)", error: true))
                 case .success(let raw):
                     let v = policyFilter(name, raw)
-                    if (m == "screenshot" || m == "fullshot"), let d = (v as? [String: Any])?["dataUrl"] as? String,
+                    if (m == "screenshot" || m == "fullshot" || m == "screenshot_element"), let d = (v as? [String: Any])?["dataUrl"] as? String,
                        let r = d.range(of: ";base64,"), d.hasPrefix("data:") {
                         reply(id, result: ["content": [["type": "image", "data": String(d[r.upperBound...]), "mimeType": String(d[d.index(d.startIndex, offsetBy: 5)..<r.lowerBound])]]])
                     } else { reply(id, result: textResult(v is NSNull ? "null" : v)) }
                 }
+              }
             }
         }
     default: reply(id, error: (-32601, "Method not found: " + method))

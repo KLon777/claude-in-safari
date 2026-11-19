@@ -30,6 +30,10 @@ Claude видит ваши вкладки, читает страницы, кли
 | Отладка | `safari_console` (console.*, ошибки страницы), `safari_network` (fetch/XHR: метод, URL, статус, время) |
 | JavaScript | `safari_eval` (изолированный мир расширения), `safari_eval_page` (мир самой страницы: `window`, переменные, фреймворки) |
 | Системное | `safari_screen_point` — экранные координаты элемента для настоящего (trusted) клика системным инструментом |
+| Структура и чтение | `safari_snapshot` (дерево страницы в стиле accessibility, с ref), `safari_reader` (основная статья в markdown) |
+| Файлы и перетаскивание | `safari_upload_file` (файл с Mac в поле загрузки или dropzone), `safari_drag` (drag and drop), `safari_dialog` (alert/confirm/prompt) |
+| Данные сайта | `safari_cookies`, `safari_storage` (localStorage/sessionStorage) — всегда с подтверждением |
+| Экспорт | `safari_screenshot_element` (скриншот элемента), `safari_save_pdf` (страница целиком в PDF) |
 
 Поддерживаются открытые shadow DOM и iframe, включая кросс-доменные: `safari_frames` показывает фреймы вкладки, а параметр `frame` в `read_page`, `click`, `type`, `get_text`, `eval_page` и др. направляет команду внутрь выбранного фрейма.
 
@@ -155,7 +159,7 @@ Safari без вопросов загружает расширения из пр
    ```bash
    git clone https://github.com/KLon777/claude-in-safari.git
    cd claude-in-safari
-   swiftc -O -swift-version 5 -o claude-safari-server swift-server/main.swift swift-server/Tools.swift swift-server/Policy.swift
+   swiftc -O -swift-version 5 -o claude-safari-server swift-server/main.swift swift-server/Tools.swift swift-server/Policy.swift swift-server/Extras.swift
    ./claude-safari-server --install   # добавляет сервер в конфиг Claude Desktop
    ```
 2. Укажите свой Apple Team ID (в Xcode: Settings → Apple Accounts) и соберите приложение:
@@ -180,6 +184,21 @@ Safari без вопросов загружает расширения из пр
     }
   }
 }
+```
+
+### Чтобы Claude всегда работал в Safari, а не в Chrome
+
+Если у вас стоит и расширение «Claude in Chrome», Claude может выбрать Chrome. Два шага:
+
+1. **Отключите Claude in Chrome**: в Chrome откройте `chrome://extensions` и выключите (или удалите) «Claude» — либо отключите соответствующий коннектор/расширение в настройках Claude.
+2. **Добавьте инструкцию.** В Claude: Настройки → Профиль → «Персональные предпочтения» (или инструкции проекта) вставьте:
+
+```text
+Для любых задач в браузере всегда используй Safari через MCP-сервер «Claude in Safari» (инструменты safari_*:
+safari_navigate, safari_read_page, safari_snapshot, safari_click, safari_type, safari_screenshot и т. д.).
+Не используй Claude in Chrome и не открывай Chrome, даже если сайт не назван.
+Если инструментов safari_* нет или расширение не подключено, не переключайся на Chrome: скажи об этом и подскажи,
+как включить расширение «Claude in Safari» (Safari → Настройки → Расширения).
 ```
 
 ## Проверка

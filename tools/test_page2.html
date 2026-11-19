@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>feature test 2</title>
+<nav id="menu"><a href="/x">Menu link</a></nav>
+<article>
+  <h1>Reader Heading</h1>
+  <p>This is the first paragraph of the article, long enough to be picked up by the reader heuristic as real content for testing.</p>
+  <p>Second paragraph with a <a href="/link">link inside</a> and <strong>bold text</strong>, again long enough to count as article body text.</p>
+</article>
+<input type="file" id="f" aria-label="File input">
+<div id="drag" draggable="true" style="width:80px;height:40px;background:#9cf">Drag me</div>
+<div id="drop" style="width:120px;height:60px;background:#fc9">Drop here</div>
+<button id="dlg">Dialog</button>
+<div id="out"></div>
+<script>
+const out = document.getElementById("out"), log = (m) => (out.textContent += m + ";");
+localStorage.setItem("lskey", "lsval"); sessionStorage.setItem("sskey", "ssval");
+document.cookie = "tc=cv; path=/";
+f.onchange = () => log("file=" + f.files[0].name + ":" + f.files[0].size);
+drag.ondragstart = () => log("dragstart");
+drop.ondragover = (e) => e.preventDefault();
+drop.ondrop = (e) => { e.preventDefault(); log("drop"); };
+dlg.onclick = () => { log("confirm=" + confirm("Sure?")); log("prompt=" + prompt("Name?", "def")); alert("hi"); log("after-alert"); };
+</script>

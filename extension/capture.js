@@ -3,7 +3,7 @@
   if (window.__claudeBuf) return;
   let hooked = false;
   const api = typeof browser !== "undefined" ? browser : chrome;
-  const buf = (window.__claudeBuf = { console: [], network: [] });
+  const buf = (window.__claudeBuf = { console: [], network: [], dialog: [] });
   window.addEventListener("message", (e) => {
     const d = e.data;
     if (e.source !== window || !d || d.__claudeSafari !== 1) return;

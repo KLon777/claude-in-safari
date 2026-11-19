@@ -8,6 +8,13 @@ TABS = {1: "https://bank.example/login", 2: "https://news.example/a", 3: "https:
 ACTIVE = 2
 fails = []
 
+def make_png(w, h):
+    import zlib
+    def chunk(t, d): return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+    rows = b"".join(b"\x00" + bytes([200, (y * 255) // h, 128]) * w for y in range(h))
+    return base64.b64encode(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")).decode()
+PNG = make_png(300, 1200)
+
 def check(name, ok, info=""):
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  -> " + str(info)))
     if not ok: fails.append(name)
@@ -50,6 +57,8 @@ def fake_extension(ws, broken_tab_info):
                 elif meth in ("new_tab", "navigate"):
                     u = p.get("url", "")
                     res = {"id": 9, "url": TABS[1] if u.endswith("/redirect") else u, "title": "N"}
+                elif meth == "upload_file": res = {"files": [{"name": f["name"], "mime": f["mime"], "len": len(f["data"])} for f in p["files"]], "ref": p.get("ref")}
+                elif meth == "fullshot": res = {"dataUrl": "data:image/png;base64," + PNG, "pages": 1}
                 else: res = {"ok": True, "method": meth, "tab": tid}
                 ws.send({"id": m["id"], "result": res})
         except Exception: pass
@@ -158,6 +167,48 @@ def main():
     check("policy.json created on first use", os.path.exists(path) and (os.stat(path).st_mode & 0o777) == 0o600)
     with open(path, "w") as f: f.write('{"blocked": ["bank.example"]}')
     e, t = s.tool("safari_click", tabId=1, ref="1"); check("live edit: now blocked", e and "Blocked" in t, t); s.close()
+
+    # 6. sensitive tools (cookies, storage, upload) ask even with an empty policy; dialog/drag count as acting
+    s = Srv({}, answer="deny")
+    for tool, args in [("safari_cookies", {}), ("safari_storage", {}), ("safari_upload_file", {"ref": "1", "paths": ["/tmp/x"]})]:
+        e, t = s.tool(tool, tabId=2, **args); check("sensitive %s: asked, deny refuses" % tool, e and "Refused by the user" in t, t)
+    e, t = s.tool("safari_snapshot", tabId=2); check("snapshot/reader are plain reads: not asked", not e, t)
+    e, t = s.tool("safari_screenshot_element", tabId=2, ref="1"); check("screenshot_element not asked", not e, t); s.close()
+    s = Srv({}, answer="once")
+    e, t = s.tool("safari_cookies", tabId=2, action="get"); check("sensitive, answer once: allowed", not e, t); s.close()
+    s = Srv({"allowSensitive": ["news.example"]})  # no answer hook: any question would open a real dialog
+    e, t = s.tool("safari_cookies", tabId=2); check("allowSensitive host: no question", not e, t)
+    e, t = s.tool("safari_storage", tabId=2, action="get", key="k"); check("allowSensitive host: storage ok", not e, t); s.close()
+    s = Srv({"blocked": ["news.example"], "allowSensitive": ["news.example"]})
+    e, t = s.tool("safari_cookies", tabId=2); check("blocked wins over allowSensitive", e and "Blocked" in t, t); s.close()
+    s = Srv({"confirm": ["news.example"]}, answer="deny")
+    e, t = s.tool("safari_dialog", tabId=2, action="intercept"); check("dialog is an acting tool", e and "Refused by the user" in t, t)
+    e, t = s.tool("safari_drag", tabId=2, ref="1", toRef="2"); check("drag is an acting tool", e and "Refused by the user" in t, t); s.close()
+
+    # 7. upload_file: the server reads the files, refuses protected places and big files
+    s = Srv({"allowSensitive": ["news.example"]})
+    open(s.home + "/doc.txt", "w").write("hello")
+    os.makedirs(s.home + "/.ssh"); open(s.home + "/.ssh/id_rsa", "w").write("secret")
+    open(s.home + "/big.bin", "wb").write(b"0" * (21 << 20))
+    e, t = s.tool("safari_upload_file", tabId=2, ref="7", paths=[s.home + "/doc.txt"])
+    check("upload: file read and sent as base64", not e and json.loads(t)["files"][0]["name"] == "doc.txt" and json.loads(t)["files"][0]["len"] == 8 and json.loads(t)["ref"] == "7", t)
+    e, t = s.tool("safari_upload_file", tabId=2, ref="7", paths=["~/doc.txt"]); check("upload: ~ expands", not e and "doc.txt" in t, t)
+    e, t = s.tool("safari_upload_file", tabId=2, ref="7", paths=[s.home + "/.ssh/id_rsa"]); check("upload: ~/.ssh refused", e and "protected" in t, t)
+    e, t = s.tool("safari_upload_file", tabId=2, ref="7", paths=[s.home + "/big.bin"]); check("upload: >20 MB refused", e and "limit" in t, t)
+    e, t = s.tool("safari_upload_file", tabId=2, ref="7", paths=[s.home + "/nope.txt"]); check("upload: missing file refused", e and "Not a file" in t, t)
+    e, t = s.tool("safari_upload_file", tabId=2, ref="7", paths=["relative.txt"]); check("upload: relative path refused", e and "absolute" in t, t); s.close()
+
+    # 8. save_pdf: PDF under the home folder, no overwrite, no protected places
+    s = Srv({})
+    out = s.home + "/out.pdf"
+    e, t = s.tool("safari_save_pdf", tabId=2, path=out); check("pdf: saved", not e and os.path.exists(out) and open(out, "rb").read(5) == b"%PDF-", t)
+    e, t = s.tool("safari_save_pdf", tabId=2, path=out); check("pdf: never overwrites", not e and os.path.exists(s.home + "/out 2.pdf"), t)
+    e, t = s.tool("safari_save_pdf", tabId=2, path="/tmp/cis-outside.pdf"); check("pdf: outside home refused", e and "Refused" in t and not os.path.exists("/tmp/cis-outside.pdf"), t)
+    e, t = s.tool("safari_save_pdf", tabId=2, path=s.home + "/.ssh/x.pdf"); check("pdf: protected folder refused", e and "Refused" in t, t)
+    e, t = s.tool("safari_save_pdf", tabId=2, path=s.home + "/Library/x.pdf"); check("pdf: ~/Library refused", e and "Refused" in t, t)
+    os.makedirs(s.home + "/Downloads")
+    e, t = s.tool("safari_save_pdf", tabId=2); check("pdf: default name in ~/Downloads", not e and os.path.exists(s.home + "/Downloads/T.pdf"), t)
+    s.close()
 
     print("\n%d failed" % len(fails) if fails else "\nALL OK")
     sys.exit(1 if fails else 0)

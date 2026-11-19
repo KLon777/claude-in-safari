@@ -143,7 +143,7 @@ const run = (method) => async (args) => {
   catch (e) { return { isError: true, ...text(e.message) }; }
 };
 
-const server = new McpServer({ name: "Claude in Safari", version: "1.0.3" });
+const server = new McpServer({ name: "Claude in Safari", version: "1.1.0" });
 const frame = z.number().optional().describe("Frame id from safari_frames; omit for the top page (child frames are separate documents, so refs and queries apply to one frame at a time)");
 const tabId = z.number().optional().describe("Tab id from safari_tabs; defaults to the active tab");
 
@@ -192,6 +192,23 @@ server.tool("safari_screenshot", "Screenshot of the tab's visible area (brings t
     return { isError: true, ...text(e.message) };
   }
 });
+
+server.tool("safari_snapshot", "Accessibility-style tree of the page: landmarks, headings, text and interactive elements (with refs usable by click/type/form_input), nested by structure, including shadow DOM and same-origin iframes. Pass ref to snapshot only one subtree; limit caps the node count (default 1500).", { ref: z.string().optional(), limit: z.number().optional(), tabId, frame }, run("snapshot"));
+server.tool("safari_reader", "The main article of the page as clean markdown-like text (title, byline, headings, paragraphs, lists, links), without menus, ads and comments. Falls back to the plain page text when no article is found.", { tabId }, run("reader"));
+server.tool("safari_cookies", "Cookies of the tab's site (or of url). action: get (default; name filters), set (name, value, optional path/domain/secure/httpOnly/expires ISO date) or delete (name). Safari may keep showing a deleted cookie in document.cookie of the already open page in the tab that already read it (a fresh tab shows the truth). Sensitive: Claude in Safari asks you before every use.", { action: z.enum(["get", "set", "delete"]).optional(), name: z.string().optional(), value: z.string().optional(), url: z.string().optional(), path: z.string().optional(), domain: z.string().optional(), secure: z.boolean().optional(), httpOnly: z.boolean().optional(), expires: z.string().optional(), tabId }, run("cookies"));
+server.tool("safari_storage", "localStorage or sessionStorage of the tab's page. area: local (default) | session; action: list (default; keys with previews), get, set or delete (key, value). Sensitive: Claude in Safari asks you before every use.", { area: z.enum(["local", "session"]).optional(), action: z.enum(["list", "get", "set", "delete"]).optional(), key: z.string().optional(), value: z.string().optional(), tabId }, run("storage"));
+server.tool("safari_upload_file", "Put a file from this Mac into a page: ref of an <input type=file> (or of a drop zone). paths are absolute paths (max 20 MB each). Sensitive: Claude in Safari asks you before every use and refuses key/credential folders.", { ref: z.string(), paths: z.array(z.string()).min(1).max(10), tabId, frame }, run("upload_file"));
+server.tool("safari_drag", "Drag one element onto another (by refs) or between viewport points: fires pointer, mouse and HTML5 drag events (dragstart, dragover, drop, ...), so sortable lists, kanban boards and drop zones react.", { ref: z.string().optional(), x: z.number().optional(), y: z.number().optional(), toRef: z.string().optional(), toX: z.number().optional(), toY: z.number().optional(), steps: z.number().optional(), tabId, frame }, run("drag"));
+server.tool("safari_dialog", "alert/confirm/prompt dialogs. By default they stay native and block the page. action=intercept (mode accept|dismiss, promptText for prompt) makes the page answer them automatically and record them until it reloads; action=list shows the recorded ones (clear empties); action=native turns interception off.", { action: z.enum(["list", "intercept", "native"]).optional(), mode: z.enum(["accept", "dismiss"]).optional(), promptText: z.string().optional(), clear: z.boolean().optional(), tabId, frame }, run("dialog"));
+server.tool("safari_screenshot_element", "Screenshot of one element by ref (scrolled into view, cropped; only the visible part if it is larger than the window). padding adds CSS pixels around it.", { ref: z.string(), padding: z.number().optional(), tabId }, async (args) => {
+  try {
+    const { dataUrl } = await call("screenshot_element", args);
+    return { content: [{ type: "image", data: dataUrl.replace(/^data:image\/png;base64,/, ""), mimeType: "image/png" }] };
+  } catch (e) {
+    return { isError: true, ...text(e.message) };
+  }
+});
+server.tool("safari_save_pdf", "Save the whole page as a PDF file (image-based pages: looks like the page, text is not selectable). path defaults to ~/Downloads/<title>.pdf; existing files are never overwritten. Available in the Swift server only.", { path: z.string().optional(), maxHeight: z.number().optional(), tabId }, async () => ({ isError: true, ...text("safari_save_pdf is available in the Swift server only") }));
 
 await server.connect(new StdioServerTransport());
 process.stdin.on("close", () => process.exit(0));

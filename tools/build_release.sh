@@ -16,7 +16,7 @@ cp -R "$APP" "$STAGE/Claude in Safari.app"
 osacompile -o "$STAGE/Sign with my certificate.app" tools/sign-wizard.applescript
 # MCP server: one universal Swift binary, no Node.js needed
 mkdir -p build-release
-for a in arm64 x86_64; do swiftc -O -swift-version 5 -target "$a-apple-macos12.0" -o "build-release/server-$a" swift-server/main.swift swift-server/Tools.swift swift-server/Policy.swift; done
+for a in arm64 x86_64; do swiftc -O -swift-version 5 -target "$a-apple-macos12.0" -o "build-release/server-$a" swift-server/main.swift swift-server/Tools.swift swift-server/Policy.swift swift-server/Extras.swift; done
 lipo -create build-release/server-arm64 build-release/server-x86_64 -output "$SRVDIR/claude-safari-server"
 codesign --force -s - "$SRVDIR/claude-safari-server"
 

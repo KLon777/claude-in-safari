@@ -43,6 +43,33 @@
     return xsend.apply(this, arguments);
   };
 
+  // safari_dialog: off by default (the page's own alert/confirm/prompt run natively). When content.js turns interception on,
+  // dialogs do not block: they are recorded and answered by mode ("accept" or "dismiss"). Resets when the page reloads.
+  let dlg = null;
+  window.addEventListener("message", (e) => {
+    const d = e.data;
+    if (e.source !== window || !d || !d.__claudeDialogCfg) return;
+    dlg = d.mode === "accept" || d.mode === "dismiss" ? { mode: d.mode, promptText: d.promptText } : null;
+  });
+  const nAlert = window.alert, nConfirm = window.confirm, nPrompt = window.prompt;
+  const msg = (m) => String(m === undefined ? "" : m).slice(0, 1000);
+  window.alert = function (m) {
+    if (!dlg) return nAlert.apply(this, arguments);
+    send("dialog", { type: "alert", message: msg(m), answer: "ok" });
+  };
+  window.confirm = function (m) {
+    if (!dlg) return nConfirm.apply(this, arguments);
+    const a = dlg.mode === "accept";
+    send("dialog", { type: "confirm", message: msg(m), answer: a });
+    return a;
+  };
+  window.prompt = function (m, def) {
+    if (!dlg) return nPrompt.apply(this, arguments);
+    const a = dlg.mode === "accept" ? (typeof dlg.promptText === "string" ? dlg.promptText : def == null ? "" : String(def)) : null;
+    send("dialog", { type: "prompt", message: msg(m), default: def == null ? null : String(def), answer: a });
+    return a;
+  };
+
   // safari_eval_page: content.js posts the code, it runs here in the page's own world and the result goes back the same way.
   // shortcut: pages whose CSP forbids eval (no 'unsafe-eval') answer with an EvalError; no way around that without the page's consent.
   window.addEventListener("message", async (e) => {

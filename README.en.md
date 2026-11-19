@@ -30,6 +30,10 @@ Claude sees your tabs, reads pages, clicks, types, takes screenshots and runs Ja
 | Debugging | `safari_console` (console.*, page errors), `safari_network` (fetch/XHR: method, URL, status, time) |
 | JavaScript | `safari_eval` (the extension's isolated world), `safari_eval_page` (the page's own world: `window`, page variables, frameworks) |
 | System | `safari_screen_point` — screen coordinates of an element for a real (trusted) click from a system-level tool |
+| Structure and reading | `safari_snapshot` (accessibility-style tree with refs), `safari_reader` (main article as markdown) |
+| Files and dragging | `safari_upload_file` (a file from the Mac into a file input or drop zone), `safari_drag` (drag and drop), `safari_dialog` (alert/confirm/prompt) |
+| Site data | `safari_cookies`, `safari_storage` (localStorage/sessionStorage), always with a confirmation |
+| Export | `safari_screenshot_element` (one element), `safari_save_pdf` (whole page to a PDF) |
 
 Open shadow DOM and iframes are supported, cross-origin ones included: `safari_frames` lists a tab's frames, and the `frame` parameter of `read_page`, `click`, `type`, `get_text`, `eval_page` and others sends the command into the chosen frame.
 
@@ -154,7 +158,7 @@ Requirements: macOS, Safari 16.4+, Xcode, an Apple ID (a free Personal Team is e
    ```bash
    git clone https://github.com/KLon777/claude-in-safari.git
    cd claude-in-safari
-   swiftc -O -swift-version 5 -o claude-safari-server swift-server/main.swift swift-server/Tools.swift swift-server/Policy.swift
+   swiftc -O -swift-version 5 -o claude-safari-server swift-server/main.swift swift-server/Tools.swift swift-server/Policy.swift swift-server/Extras.swift
    ./claude-safari-server --install   # adds the server to Claude Desktop's config
    ```
 2. Provide your Apple Team ID (Xcode: Settings → Apple Accounts) and build the app:
@@ -179,6 +183,21 @@ The wizard or the command `claude-safari-server --install` adds the server to th
     }
   }
 }
+```
+
+### Make Claude always use Safari instead of Chrome
+
+If the "Claude in Chrome" extension is installed too, Claude may pick Chrome. Two steps:
+
+1. **Turn Claude in Chrome off**: open `chrome://extensions` in Chrome and switch "Claude" off (or remove it), or disable the matching connector/extension in Claude's settings.
+2. **Add an instruction.** In Claude: Settings → Profile → personal preferences (or project instructions), paste:
+
+```text
+For any browser task, always use Safari through the "Claude in Safari" MCP server (the safari_* tools:
+safari_navigate, safari_read_page, safari_snapshot, safari_click, safari_type, safari_screenshot, and so on).
+Do not use Claude in Chrome and do not open Chrome, even when no browser is named.
+If the safari_* tools are missing or the extension is not connected, do not fall back to Chrome: say so and explain
+how to enable the "Claude in Safari" extension (Safari > Settings > Extensions).
 ```
 
 ## Testing

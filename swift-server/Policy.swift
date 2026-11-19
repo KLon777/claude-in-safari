@@ -4,6 +4,8 @@
 //   "confirm":    hosts where acting tools (click, type, key, form_input, eval, eval_page, navigate, new_tab, history) first ask
 //                 you in a macOS dialog.
 //   "confirmAll": the same question for every site.
+//   "allowSensitive": hosts where cookies, storage and file upload (always asked about, even with no policy at all) go ahead
+//                 without the question. Empty by default.
 // A pattern "example.com" (or "*.example.com") matches the host and all of its subdomains; "*" matches everything.
 // Pages without a host are matched by scheme: "file:", "favorites:", "about:".
 // Limits: the check uses the tab's host at call time (a page can still redirect afterwards; navigate results are re-checked),
@@ -17,15 +19,17 @@ struct Policy {
     var blocked: [String] = []
     var confirm: [String] = []
     var confirmAll = false
+    var allowSensitive: [String] = []
     var isEmpty: Bool { blocked.isEmpty && confirm.isEmpty && !confirmAll }
 }
 
 let defaultPolicyText = """
 {
-  "_help": "blocked: Claude cannot use these sites at all. confirm: Claude asks you before acting there. confirmAll: ask on every site. 'example.com' also matches subdomains. Changes apply immediately.",
+  "_help": "blocked: Claude cannot use these sites at all. confirm: Claude asks you before acting there. confirmAll: ask on every site. allowSensitive: sites where cookies/storage/file upload need no question (otherwise they are always asked). 'example.com' also matches subdomains. Changes apply immediately.",
   "blocked": [],
   "confirm": [],
-  "confirmAll": false
+  "confirmAll": false,
+  "allowSensitive": []
 }
 
 """
@@ -46,7 +50,7 @@ func loadPolicy() -> (Policy, String?) {
         return (Policy(), "policy.json is not valid JSON (\(policyURL.path)): fix it or delete it. Until then every tool is refused.")
     }
     func list(_ k: String) -> [String] { (o[k] as? [Any] ?? []).compactMap { ($0 as? String)?.lowercased().trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
-    return (Policy(blocked: list("blocked"), confirm: list("confirm"), confirmAll: o["confirmAll"] as? Bool ?? false), nil)
+    return (Policy(blocked: list("blocked"), confirm: list("confirm"), confirmAll: o["confirmAll"] as? Bool ?? false, allowSensitive: list("allowSensitive")), nil)
 }
 
 func hostOf(_ url: String?) -> String {
@@ -67,8 +71,12 @@ func hostMatches(_ host: String, _ pattern: String) -> Bool {
 func isBlocked(_ host: String, _ p: Policy) -> Bool { p.blocked.contains { hostMatches(host, $0) } }
 
 let ACTING: Set<String> = ["safari_click", "safari_type", "safari_key", "safari_form_input", "safari_eval", "safari_eval_page",
-                           "safari_navigate", "safari_new_tab", "safari_history"]
+                           "safari_navigate", "safari_new_tab", "safari_history", "safari_dialog", "safari_drag"]
+/// Tools that read or write credentials/files: they ask on every call (even with an empty policy) unless the site is in "allowSensitive"
+/// or was approved "until restart".
+let SENSITIVE: Set<String> = ["safari_cookies", "safari_storage", "safari_upload_file"]
 var approvedHosts = Set<String>() // "allow this site until restart" answers; touched on Q only
+var approvedSensitive = Set<String>() // the same for SENSITIVE tools
 
 enum Verdict { case allow, deny(String) }
 
@@ -80,6 +88,10 @@ func describe(_ name: String, _ a: [String: Any]) -> String {
     if let v = a["value"] as? String { parts.append("«" + cut(v, 40) + "»") }
     if let c = a["code"] as? String { parts.append(cut(c.replacingOccurrences(of: "\n", with: " "), 80)) }
     if let k = a["key"] as? String { parts.append(k) }
+    if let x = a["action"] as? String { parts.append(x) }
+    if let n = a["name"] as? String { parts.append(cut(n, 40)) }
+    if let x = a["area"] as? String { parts.append(x) }
+    if let ps = a["paths"] as? [String] { parts.append(cut(ps.joined(separator: ", "), 120)) }
     return parts.joined(separator: " ")
 }
 
@@ -111,13 +123,25 @@ func askUser(host: String, action: String, _ k: @escaping (String) -> Void) {
 func policyCheck(_ name: String, _ args: [String: Any], _ done: @escaping (Verdict) -> Void) {
     let (pol, err) = loadPolicy()
     if let e = err { return done(.deny(e)) }
-    if pol.isEmpty || name == "safari_tabs" { return done(.allow) }
+    if name == "safari_tabs" || (pol.isEmpty && !SENSITIVE.contains(name)) { return done(.allow) }
     var hosts: [String] = []
     if let u = args["url"] as? String { hosts.append(hostOf(u)) }
     func decide(_ tabHost: String?) {
         if let t = tabHost { hosts.append(t) }
         if let h = hosts.first(where: { isBlocked($0, pol) }) {
             return done(.deny("Blocked by policy: \(h) is in the blocked list (\(policyURL.path)). Nothing was done."))
+        }
+        if SENSITIVE.contains(name) {
+            let need = hosts.filter { h in !approvedSensitive.contains(h) && !pol.allowSensitive.contains { hostMatches(h, $0) } }
+            let unknownS = hosts.allSatisfy { $0.isEmpty }
+            guard let hostS = need.first ?? (unknownS ? "(unknown site)" : nil) else { return done(.allow) }
+            return askUser(host: hostS, action: describe(name, args)) { ans in
+                switch ans {
+                case "site": approvedSensitive.formUnion(need); done(.allow)
+                case "once": done(.allow)
+                default: done(.deny("Refused by the user (confirmation dialog for \(hostS)). Nothing was done."))
+                }
+            }
         }
         guard ACTING.contains(name) else { return done(.allow) }
         let ask = hosts.filter { h in !approvedHosts.contains(h) && (pol.confirmAll || pol.confirm.contains { hostMatches(h, $0) }) }
