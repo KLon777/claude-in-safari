@@ -1,9 +1,11 @@
-// Draws the DMG window background: swift tools/dmg/background.swift OUT_DIR
+// Draws the DMG window background: swift tools/dmg/background.swift OUT_DIR [ru|en]
 // Writes background.png (1x) and background@2x.png (2x), 660x600 pt (spare space at the bottom for the Finder status bar).
 import AppKit
 
 let W: CGFloat = 660, H: CGFloat = 640
 let out = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "."
+let lang = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "ru"
+func L(_ ru: String, _ en: String) -> String { lang == "en" ? en : ru }
 func y(_ top: CGFloat) -> CGFloat { H - top }
 
 let ink = NSColor(calibratedWhite: 0.15, alpha: 1)
@@ -44,7 +46,7 @@ func render(scale: CGFloat, to path: String) {
     blue.setFill(); NSRect(x: W / 2, y: H - 6, width: W / 2, height: 6).fill()
 
     text("Claude in Safari", NSRect(x: 0, y: y(60), width: W, height: 36), size: 26, weight: .bold, align: .center)
-    text("Claude управляет вашим настоящим Safari  ·  unofficial, not affiliated with Anthropic",
+    text(L("Claude управляет вашим настоящим Safari  ·  неофициальный, не связан с Anthropic", "Claude drives your real Safari  ·  unofficial, not affiliated with Anthropic"),
          NSRect(x: 0, y: y(86), width: W, height: 20), size: 12.5, color: grey, align: .center)
 
     // icon rows (icons are placed by dmgbuild at x=120): wizard 170, app 300, server 430, readme 540
@@ -58,19 +60,19 @@ func render(scale: CGFloat, to path: String) {
         text(title, NSRect(x: x, y: y(tops[i] + 38), width: w, height: 20), size: 15, weight: .semibold)
         text(body, NSRect(x: x, y: y(tops[i] + 118), width: w, height: 76), size: 11.5, color: grey)
     }
-    block(0, "Запустите мастер",
-          "Двойной клик (если macOS не открывает: правый клик → Открыть). Мастер скопирует приложение в «Программы», поможет получить бесплатный сертификат Apple Development и подпишет расширение.")
-    block(1, "Включите расширение в Safari",
-          "Safari → Настройки → Расширения: включите его и разрешите все сайты. Без подписи: перетащите приложение на «Applications», запустите и включите Разработка → Разрешить неподписанные расширения (см. README).", x: 290)
+    block(0, L("Запустите мастер", "Run the wizard"),
+          L("Двойной клик (если macOS не открывает: правый клик → Открыть). Мастер скопирует приложение в «Программы», поможет получить бесплатный сертификат Apple Development и подпишет расширение.", "Double-click it (if macOS refuses: right-click → Open). The wizard copies the app to Applications, helps you get a free Apple Development certificate and signs the extension."))
+    block(1, L("Включите расширение в Safari", "Enable the extension in Safari"),
+          L("Safari → Настройки → Расширения: включите его и разрешите все сайты. Без подписи: перетащите приложение на «Applications», запустите и включите Разработка → Разрешить неподписанные расширения (см. README).", "Safari → Settings → Extensions: turn it on and allow all websites. Without signing: drag the app to Applications, launch it and use Develop → Allow Unsigned Extensions (see README)."), x: 290)
     do { // arrow between the app and the Applications shortcut (unsigned route)
         accent.setStroke(); accent.setFill()
         let l = NSBezierPath(); l.move(to: NSPoint(x: 128, y: y(292))); l.line(to: NSPoint(x: 152, y: y(292)))
         l.lineWidth = 3; l.lineCapStyle = .round; l.stroke()
         let h = NSBezierPath(); h.move(to: NSPoint(x: 162, y: y(292))); h.line(to: NSPoint(x: 150, y: y(285))); h.line(to: NSPoint(x: 150, y: y(299))); h.close(); h.fill()
     }
-    block(2, "Сервер для Claude",
-          "Мастер сам положит папку в /Users/Shared и добавит её в Claude Desktop. Без мастера — см. README.txt. Затем перезапустите Claude Desktop (⌘Q).", x: 215)
-    text("README.txt: краткая инструкция. Полная, с примерами и вариантом без сертификата: github.com/KLon777/claude-in-safari",
+    block(2, L("Сервер для Claude", "Server for Claude"),
+          L("Мастер сам положит папку в /Users/Shared и добавит её в Claude Desktop. Без мастера — см. README.txt. Затем перезапустите Claude Desktop (⌘Q).", "The wizard puts the folder into /Users/Shared and adds it to Claude Desktop. Without the wizard, see README.txt. Then restart Claude Desktop (⌘Q)."), x: 215)
+    text(L("README.txt: краткая инструкция. Полная, с примерами и вариантом без сертификата: github.com/KLon777/claude-in-safari", "README.txt: short instructions. Full guide, with examples and the no-certificate route: github.com/KLon777/claude-in-safari"),
          NSRect(x: tx, y: y(tops[3] + 62), width: tw, height: 44), size: 11.5, color: grey)
 
     NSGraphicsContext.restoreGraphicsState()

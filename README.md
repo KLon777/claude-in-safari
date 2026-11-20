@@ -64,7 +64,9 @@ Claude Desktop ──stdio──> MCP-сервер (Swift) ──WebSocket 127.0
 
 ## Установка из релиза
 
-1. Скачайте `Claude-in-Safari.dmg` из [Releases](https://github.com/KLon777/claude-in-safari/releases/latest), перетащите **Claude in Safari.app** в «Программы».
+В релизе два образа: русский (`Claude-in-Safari-ru.dmg`: мастер, подсказки и README.txt на русском) и английский (`Claude-in-Safari-en.dmg`, см. [README.en.md](README.en.md)). Приложение и сервер в них одинаковые.
+
+1. Скачайте `Claude-in-Safari-ru.dmg` из [Releases](https://github.com/KLon777/claude-in-safari/releases/latest), перетащите **Claude in Safari.app** в «Программы».
 2. Приложение собрано без платного сертификата, поэтому Safari загрузит его расширение только после одного из вариантов ниже: **подписать своим сертификатом** (рекомендуется) или **включить неподписанные расширения**.
 3. Запустите приложение → включите **Claude in Safari** в Safari → Настройки → Расширения и разрешите все сайты.
 4. Мастер сам копирует «Claude Safari Server» в `/Users/Shared` и добавляет сервер в конфиг Claude Desktop; затем полностью перезапустите Claude Desktop (подробно — ниже).
@@ -75,11 +77,11 @@ Claude Desktop ──stdio──> MCP-сервер (Swift) ──WebSocket 127.0
 
 **Что понадобится:** Mac с macOS и Safari 16.4+, бесплатный Apple ID, Claude Desktop.
 
-**1. Откройте образ.** Скачайте `Claude-in-Safari.dmg` из [Releases](https://github.com/KLon777/claude-in-safari/releases/latest) и дважды щёлкните по нему. В окне три шага.
+**1. Откройте образ.** Скачайте `Claude-in-Safari-ru.dmg` из [Releases](https://github.com/KLon777/claude-in-safari/releases/latest) и дважды щёлкните по нему. В окне три шага.
 
 ![Окно образа](docs/install/01-dmg.png)
 
-**2. Запустите мастер** («Sign with my certificate»). Если macOS не открывает его, нажмите правой кнопкой → «Открыть». Мастер скопирует приложение в «Программы» (Applications), а папку «Claude Safari Server» — в `/Users/Shared`.
+**2. Запустите мастер** («Подписать своим сертификатом»). Если macOS не открывает его, нажмите правой кнопкой → «Открыть». Мастер скопирует приложение в «Программы» (Applications), а папку «Claude Safari Server» — в `/Users/Shared`.
 
 ![Старт мастера](docs/install/02-wizard-start.png)
 
@@ -94,10 +96,12 @@ Claude Desktop ──stdio──> MCP-сервер (Swift) ──WebSocket 127.0
 
 Затем выберите аккаунт и нажмите «Personal Team ›» → **Manage Certificates…**
 
-![Xcode: Personal Team](docs/install/05-xcode-team.png)
+![Xcode: Personal Team](docs/install/05b-xcode-teams.png)
+![Xcode: Manage Certificates](docs/install/05-xcode-team.png)
 
 Нажмите «+» → **Apple Development**: сертификат появится в списке.
 
+![Xcode: + → Apple Development](docs/install/06a-xcode-plus.png)
 ![Xcode: сертификат](docs/install/06-xcode-certs.png)
 
 
@@ -128,7 +132,7 @@ Claude Desktop ──stdio──> MCP-сервер (Swift) ──WebSocket 127.0
 
 Safari без вопросов загружает расширения из приложений, подписанных сертификатом разработчика Apple. Хватит бесплатного Apple ID.
 
-**Автоматически:** дважды щёлкните **Sign with my certificate** в образе (если macOS блокирует — правый клик → «Открыть»). Мастер из диалогов macOS скопирует приложение в «Программы», подскажет путь к сертификату (откроет App Store с Xcode, затем Xcode; шаги со стрелками ➜ прямо в окне), дождётся сертификата по кнопке «Проверить», подпишет приложение и проверит подпись. Вход в Apple ID с двухфакторной проверкой и выпуск сертификата — ваши руки. Для Терминала есть та же логика в `tools/sign-app.command`. Ниже — то же самое вручную.
+**Автоматически:** дважды щёлкните **«Подписать своим сертификатом»** в образе (если macOS блокирует — правый клик → «Открыть»). Мастер из диалогов macOS скопирует приложение в «Программы», подскажет путь к сертификату (откроет App Store с Xcode, затем Xcode; шаги со стрелками ➜ прямо в окне), дождётся сертификата по кнопке «Проверить», подпишет приложение и проверит подпись. Вход в Apple ID с двухфакторной проверкой и выпуск сертификата — ваши руки. Для Терминала есть та же логика в `tools/sign-app.command`. Ниже — то же самое вручную.
 
 1. Получите сертификат: **Xcode → Settings → Apple Accounts → Sign In…** (войдите своим Apple ID), затем выберите аккаунт и **Manage Certificates… → «+» → Apple Development**. Проверьте: `security find-identity -v -p codesigning` — должна быть строка `"Apple Development: ваш@email (XXXXXXXXXX)"`. (Xcode нужен только ради сертификата.)
 2. Подпишите приложение в Терминале:

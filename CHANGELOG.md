@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1
+
+- `safari_upload_file` finds the real file input behind a button, label, menu item or drop zone (label/for, aria-controls, the element's own subtree, the nearest container, the page's only file input) and says how it found it; it falls back to dropping the file on the element only when no input exists.
+- `safari_snapshot` lists hidden `<input type=file>` elements (marked `hidden`), so they get a ref like any other control.
+- Two languages, two independent distributions: `Claude-in-Safari-ru.dmg` and `Claude-in-Safari-en.dmg` (signing wizard, window background, README.txt and the wizard's file name in one language each). The wizard comes from one template, `tools/sign-wizard.template.applescript`, filled by `tools/gen_wizard.py`; `tools/build_release.sh [ru] [en]` builds both.
+- The server's confirmation dialogs use the system language (Russian or English; `CIS_LANG=ru|en` overrides) instead of a bilingual text.
+- The site is split into two pages, English at `/` and Russian at `/ru/` (`tools/gen_site.py`), with hreflang links and an updated install section; README.md / README.en.md name their own disk image.
+- The container app's window ("extension is currently on/off", "Quit and Open Safari Settings…") is shown in Russian or English by the system language (`Resources/Script.js`); other languages fall back to English.
+- Tests: new live check (hidden input behind a menu item) in `tools/feature_test_110.py`; real GitHub "Social preview" upload verified by hand.
+
 ## 1.1.0
 - New tools: `safari_snapshot` (accessibility-style page tree with refs), `safari_reader` (main article as markdown), `safari_screenshot_element`, `safari_save_pdf` (whole page to a PDF under your home folder, never overwrites), `safari_drag` (pointer + HTML5 drag and drop), `safari_dialog` (alert/confirm/prompt: intercept, answer, list), `safari_upload_file` (put a file from the Mac into a file input or drop zone), `safari_cookies`, `safari_storage`.
 - Sensitive tools (cookies, storage, file upload) always ask in a dialog, even with no policy; `allowSensitive` in `policy.json` lists sites where they go ahead. Upload refuses key/credential folders and files over 20 MB. `safari_dialog` and `safari_drag` count as acting tools for `confirm`.

@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Claude in Safari",
   "description": "Lets Claude drive Safari tabs through a local MCP server.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "background": {
     "scripts": [
       "background.js"

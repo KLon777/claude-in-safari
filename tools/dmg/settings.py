@@ -1,15 +1,16 @@
 # dmgbuild settings, called from tools/build_release.sh:
-#   dmgbuild -s tools/dmg/settings.py -D stage=DIR -D res=DIR "Claude in Safari" OUT.dmg
+#   dmgbuild -s tools/dmg/settings.py -D stage=DIR -D res=DIR -D wizard="Sign with my certificate" "Claude in Safari" OUT.dmg
 import os
 
 stage = defines["stage"]  # noqa: F821
 res = defines["res"]  # noqa: F821
+wizard = defines["wizard"] + ".app"  # noqa: F821  (the wizard's file name depends on the language)
 
 format = "UDZO"
 filesystem = "HFS+"
-files = [os.path.join(stage, n) for n in ("Sign with my certificate.app", "Claude in Safari.app", "Claude Safari Server", "README.txt")]
+files = [os.path.join(stage, n) for n in (wizard, "Claude in Safari.app", "Claude Safari Server", "README.txt")]
 symlinks = {"Applications": "/Applications"}
-hide_extensions = ["Sign with my certificate.app", "Claude in Safari.app"]
+hide_extensions = [wizard, "Claude in Safari.app"]
 background = os.path.join(res, "background.tiff")
 show_status_bar = False
 show_tab_view = False
@@ -24,7 +25,7 @@ text_size = 12
 arrange_by = None
 label_pos = "bottom"
 icon_locations = {
-    "Sign with my certificate.app": (120, 160),
+    wizard: (120, 160),
     "Claude in Safari.app": (92, 292),
     "Applications": (192, 292),
     "Claude Safari Server": (120, 424),

@@ -64,62 +64,64 @@ Claude Desktop ──stdio──> MCP server (Swift) ──WebSocket 127.0.0.1:1
 
 ## Install from a release
 
-1. Download `Claude-in-Safari.dmg` from [Releases](https://github.com/KLon777/claude-in-safari/releases/latest) and drag **Claude in Safari.app** to Applications.
+The release has two disk images: English (`Claude-in-Safari-en.dmg`: wizard, hints and README.txt in English) and Russian (`Claude-in-Safari-ru.dmg`, see [README.md](README.md)). The app and the server inside are identical.
+
+1. Download `Claude-in-Safari-en.dmg` from [Releases](https://github.com/KLon777/claude-in-safari/releases/latest) and drag **Claude in Safari.app** to Applications.
 2. The app is built without a paid certificate, so Safari loads its extension only after one of the options below: **sign it with your own certificate** (recommended) or **allow unsigned extensions**.
 3. Open the app → enable **Claude in Safari** in Safari → Settings → Extensions and allow all websites.
 4. The wizard copies "Claude Safari Server" to `/Users/Shared` and adds the server to the Claude Desktop config; then fully restart Claude Desktop (details below).
 
 ## Step-by-step installation (with pictures)
 
-Screenshots were taken on a Russian-language macOS; menu names in English are given in brackets or in the text.
+Screenshots were taken on a clean English-language macOS (in a virtual machine); the name and e-mail of the Apple account are blurred.
 
 **You need:** a Mac with macOS and Safari 16.4+, a free Apple ID, and Claude Desktop.
 
-**1. Open the disk image.** Download `Claude-in-Safari.dmg` from [Releases](https://github.com/KLon777/claude-in-safari/releases/latest) and double-click it. The window shows three steps.
+**1. Open the disk image.** Download `Claude-in-Safari-en.dmg` from [Releases](https://github.com/KLon777/claude-in-safari/releases/latest) and double-click it. The window shows three steps.
 
-![The disk image window](docs/install/01-dmg.png)
+![The disk image window](docs/install-en/01-dmg.png)
 
 **2. Run the wizard** ("Sign with my certificate"). If macOS refuses to open it, right-click → Open. The wizard copies the app to Applications and the "Claude Safari Server" folder to `/Users/Shared`.
 
-![Wizard start](docs/install/02-wizard-start.png)
+![Wizard start](docs/install-en/02-wizard-start.png)
 
 **3. Install Xcode** (free, ~10 GB, needed only to obtain the certificate). If Xcode is already installed, the wizard skips this step.
 
-![Wizard: Xcode](docs/install/03-wizard-xcode.png)
-
 **4. Create a certificate.** The wizard opens Xcode and tells you what to do: Xcode → Settings → Apple Accounts → Sign In… (use your Apple ID).
 
-![Wizard: certificate](docs/install/04-wizard-cert.png)
-![Xcode: Apple Accounts](docs/install/05a-xcode-accounts.png)
+![Wizard: certificate](docs/install-en/04-wizard-cert.png)
+![Xcode: Apple Accounts](docs/install-en/05a-xcode-accounts.png)
 
 Then select the account, click "Personal Team ›" → **Manage Certificates…**
 
-![Xcode: Personal Team](docs/install/05-xcode-team.png)
+![Xcode: Personal Team](docs/install-en/05b-xcode-teams.png)
+![Xcode: Manage Certificates](docs/install-en/05-xcode-team.png)
 
 Click "+" → **Apple Development**; the certificate appears in the list.
 
-![Xcode: certificate](docs/install/06-xcode-certs.png)
+![Xcode: + → Apple Development](docs/install-en/06a-xcode-plus.png)
+![Xcode: certificate](docs/install-en/06-xcode-certs.png)
 
 > **About the certificate.** Do not delete the Apple Development certificate from Keychain Access by hand: Apple keeps it as "Not in Keychain" and a new one may fail to issue ("You already have a current Development certificate or a pending certificate request"). In that case check the list in Xcode → Settings → Apple Accounts → Manage Certificates; signing out and back in may help. The certificate is valid for a year (365 days).
 
 **5. Signing.** Go back to the wizard and click "Check". It finds the certificate and signs the app. If macOS asks for access to the key, choose "Always Allow".
 
-![Wizard: signing](docs/install/08-wizard-sign.png)
-![Wizard: done](docs/install/08b-wizard-done.png)
+![Wizard: signing](docs/install-en/08-wizard-sign.png)
+![Wizard: done](docs/install-en/08b-wizard-done.png)
 
 **6. Enable the extension.** Open the app (button in the wizard), then Safari → Settings → Extensions → turn on **Claude in Safari**.
 
-![Safari extensions](docs/install/09-safari-extension.png)
+![Safari extensions](docs/install-en/09-safari-extension.png)
 
 When Safari asks for permission the first time, choose "Always Allow on Every Website".
 
 > **Limiting websites.** You can narrow access with Safari itself: instead of "on every website" pick "Allow for One Day" or "Always Allow on This Website", and manage the per-site list in Safari → Settings → Extensions → Claude in Safari → **"Edit Websites…"** (per site: ask / deny / allow). For banks, e-mail and other sensitive sites it makes sense to set "Deny": the extension then cannot see them, and Claude cannot work with them. A tab that was already open before the change may keep returning its text until it is reloaded, so for safety also use `blocked` in `policy.json`.
 
-![Access to all websites](docs/install/10-safari-allow-sites.png)
+![Access to all websites](docs/install-en/10-safari-allow-sites.png)
 
 **7. Connect Claude Desktop.** The wizard has already added the server to `claude_desktop_config.json` (the previous file is kept as `.bak`). Just **fully** restart Claude Desktop (⌘Q, then open it again) and ask Claude to open any page in Safari, e.g. "Open example.com in Safari and tell me the page title".
 
-![Check in Claude](docs/install/11-claude-check.png)
+![Check in Claude](docs/install-en/11-claude-check.png)
 
 > Without the wizard: copy the folder from the image to `/Users/Shared` manually (Finder → Go → Go to Folder, Shift+Cmd+G; do not press "Replace" over an old copy, delete it first) and run `"/Users/Shared/Claude Safari Server/claude-safari-server" --install` in Terminal. You can also edit the config by hand, see "Connect to Claude" below.
 

@@ -179,6 +179,19 @@ try:
         assert bad.get("isError") and "protected" in bad["content"][0]["text"], bad
     check("upload_file: file reaches the input; ~/.ssh refused", uploads)
 
+    def hidden_uploads():
+        tree = jtool("safari_snapshot", tabId=t)["tree"].splitlines()
+        hid = [l for l in tree if "type=file" in l and "hidden" in l]
+        assert hid, "the hidden file input is not listed by the snapshot"
+        # through the visible button-like element that has no file input of its own: the tool must find the input next to it
+        r = tool("safari_upload_file", tabId=t, ref=ref_of(t, "Pick an image"), paths=[upload])
+        assert "attached" in r and "hidden input" in r, r
+        assert "hidden=cis-upload-test.txt:13" in page_text(t), page_text(t)
+        # and directly through the ref of the hidden input
+        href = hid[0].split("[")[1].split("]")[0]
+        assert "attached" in tool("safari_upload_file", tabId=t, ref=href, paths=[upload])
+    check("upload_file: hidden input behind a menu item (found via the element or its own ref)", hidden_uploads)
+
     def data():
         ck = jtool("safari_cookies", tabId=t)
         assert any(c["name"] == "tc" and c["value"] == "cv" for c in ck), ck

@@ -100,8 +100,11 @@ func askUser(host: String, action: String, _ k: @escaping (String) -> Void) {
     // Test hook (tools/policy_test.py): CIS_CONFIRM_ANSWER=deny|once|site answers without a dialog.
     if let a = ProcessInfo.processInfo.environment["CIS_CONFIRM_ANSWER"], ["deny", "once", "site"].contains(a) { return Q.async { k(a) } }
     func clean(_ s: String) -> String { String(String.UnicodeScalarView(s.unicodeScalars.filter { $0.value >= 32 && $0 != "\"" && $0 != "\\" })) }
-    let text = "Claude хочет выполнить на «\(clean(host))»:\\n\(clean(action))\\n\\nClaude wants to do this on \(clean(host))."
-    let deny = "Запретить / Deny", allow = "Разрешить / Allow", site = "Этот сайт до перезапуска / This site until restart"
+    // The dialog speaks the language of the system (CIS_LANG=ru|en overrides it), like the wizard in the matching disk image.
+    let lang = ProcessInfo.processInfo.environment["CIS_LANG"] ?? (Locale.preferredLanguages.first ?? "en")
+    let ru = lang.lowercased().hasPrefix("ru")
+    let text = ru ? "Claude хочет выполнить на «\(clean(host))»:\\n\(clean(action))" : "Claude wants to do this on \(clean(host)):\\n\(clean(action))"
+    let deny = ru ? "Запретить" : "Deny", allow = ru ? "Разрешить" : "Allow", site = ru ? "Этот сайт до перезапуска" : "This site until restart"
     let script = "tell application \"System Events\"\nactivate\ndisplay dialog \"\(text)\" with title \"Claude in Safari\" buttons {\"\(deny)\", \"\(allow)\", \"\(site)\"} default button \"\(deny)\" cancel button \"\(deny)\" with icon caution giving up after 90\nend tell"
     DispatchQueue.global().async {
         let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript"); p.arguments = ["-e", script]

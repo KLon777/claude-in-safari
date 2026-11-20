@@ -6,7 +6,7 @@ import Network
 import CryptoKit
 import Security
 
-let SERVER_VERSION = "1.1.0"
+let SERVER_VERSION = "1.1.1"
 let port = UInt16(ProcessInfo.processInfo.environment["SAFARI_CLAUDE_PORT"] ?? "") ?? 18765
 let NOT_CONNECTED = "Safari extension is not connected. Open Safari and enable 'Claude for Safari' (Safari > Settings > Extensions)."
 let Q = DispatchQueue(label: "claude-safari-server")

@@ -8,6 +8,7 @@
   <p>Second paragraph with a <a href="/link">link inside</a> and <strong>bold text</strong>, again long enough to count as article body text.</p>
 </article>
 <input type="file" id="f" aria-label="File input">
+<div id="uploader"><div role="menuitem" id="pick" tabindex="0">Pick an image</div><input type="file" id="hf" aria-label="Hidden uploader" style="position:absolute;opacity:0;width:0;height:0"></div>
 <div id="drag" draggable="true" style="width:80px;height:40px;background:#9cf">Drag me</div>
 <div id="drop" style="width:120px;height:60px;background:#fc9">Drop here</div>
 <button id="dlg">Dialog</button>
@@ -17,6 +18,7 @@ const out = document.getElementById("out"), log = (m) => (out.textContent += m +
 localStorage.setItem("lskey", "lsval"); sessionStorage.setItem("sskey", "ssval");
 document.cookie = "tc=cv; path=/";
 f.onchange = () => log("file=" + f.files[0].name + ":" + f.files[0].size);
+hf.onchange = () => log("hidden=" + hf.files[0].name + ":" + hf.files[0].size);
 drag.ondragstart = () => log("dragstart");
 drop.ondragover = (e) => e.preventDefault();
 drop.ondrop = (e) => { e.preventDefault(); log("drop"); };

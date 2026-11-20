@@ -275,12 +275,13 @@
         return;
       }
       if (node.nodeType !== 1 || SNAP_SKIP.has(node.tagName.toUpperCase())) return;
-      if (snapHidden(node)) return;
+      const fileInput = node.tagName === "INPUT" && node.type === "file";
+      if (snapHidden(node) && !fileInput) return;
       const interactive = node.matches(INTERACTIVE);
       const isHeading = /^H[1-6]$/.test(node.tagName);
       const role = node.getAttribute("role") || LANDMARK[node.tagName] || "";
       if (interactive || isHeading || node.tagName === "IMG") {
-        if (interactive && !visible(node)) return;
+        if (interactive && !fileInput && !visible(node)) return;
         const bits = [roleOf(node)];
         const name = nameOf(node);
         if (name) bits.push(JSON.stringify(name));
@@ -288,6 +289,7 @@
         if (interactive) bits.push("[" + refOf(node) + "]");
         if (node.href) bits.push("href=" + node.href);
         if (node.type && node.tagName === "INPUT") bits.push("type=" + node.type);
+        if (fileInput && !visible(node)) bits.push("hidden");
         if (node.checked) bits.push("checked");
         if (node.disabled) bits.push("disabled");
         const ex = node.getAttribute("aria-expanded"); if (ex) bits.push("expanded=" + ex);
@@ -379,6 +381,27 @@
   }
 
   // ---- safari_upload_file: files arrive as base64 from the server (which read them from disk after the user confirmed) ----
+  // Sites hide the real <input type=file> behind a button, label or menu item (GitHub, Google, most uploaders): follow label/for/aria-controls, then
+  // look inside the element and its nearest containers, then fall back to the page's only file input.
+  function findFileInput(el) {
+    const isFile = (n) => n && n.tagName === "INPUT" && n.type === "file";
+    if (isFile(el)) return { input: el, via: "" };
+    const lab = el.closest && el.closest("label");
+    if (lab && isFile(lab.control)) return { input: lab.control, via: "via its label" };
+    const ctl = el.getAttribute && el.getAttribute("aria-controls");
+    if (ctl) { const c = document.getElementById(ctl); if (isFile(c)) return { input: c, via: "via aria-controls" }; if (c && c.querySelector) { const i = c.querySelector("input[type=file]"); if (i) return { input: i, via: "via aria-controls" }; } }
+    const inner = el.querySelector && el.querySelector("input[type=file]");
+    if (inner) return { input: inner, via: inner.getBoundingClientRect().width ? "" : "hidden input inside the element" };
+    let up = el.parentElement;
+    for (let i = 0; up && i < 4; i++, up = up.parentElement) {
+      const list = up.querySelectorAll("input[type=file]");
+      if (list.length === 1) return { input: list[0], via: "hidden input next to the element" };
+      if (list.length > 1) break;
+    }
+    const all = document.querySelectorAll("input[type=file]");
+    if (all.length === 1) return { input: all[0], via: "the only file input on the page" };
+    return null;
+  }
   function uploadFile(p) {
     const el = target(p);
     const files = (p.files || []).map((f) => {
@@ -389,14 +412,15 @@
     if (!files.length) throw new Error("No files");
     const dt = new DataTransfer();
     for (const f of files) dt.items.add(f);
-    const input = el.tagName === "INPUT" && el.type === "file" ? el : el.querySelector && el.querySelector("input[type=file]");
     const names = files.map((f) => f.name).join(", ");
+    const found = findFileInput(el);
+    const input = found && found.input;
     if (input) {
       if (files.length > 1 && !input.multiple) throw new Error("This file input accepts one file only");
       input.files = dt.files;
       input.dispatchEvent(new Event("input", { bubbles: true }));
       input.dispatchEvent(new Event("change", { bubbles: true }));
-      return "attached " + names + " to the file input";
+      return "attached " + names + " to the file input" + (found.via ? " (" + found.via + ")" : "");
     }
     const r = el.getBoundingClientRect();
     for (const type of ["dragenter", "dragover", "drop"]) {

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://klon777.github.io/claude-in-safari/</loc><lastmod>2026-11-19</lastmod></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url><loc>https://klon777.github.io/claude-in-safari/</loc><xhtml:link rel="alternate" hreflang="en" href="https://klon777.github.io/claude-in-safari/"/><xhtml:link rel="alternate" hreflang="ru" href="https://klon777.github.io/claude-in-safari/ru/"/></url>
+  <url><loc>https://klon777.github.io/claude-in-safari/ru/</loc><xhtml:link rel="alternate" hreflang="en" href="https://klon777.github.io/claude-in-safari/"/><xhtml:link rel="alternate" hreflang="ru" href="https://klon777.github.io/claude-in-safari/ru/"/></url>
 </urlset>
